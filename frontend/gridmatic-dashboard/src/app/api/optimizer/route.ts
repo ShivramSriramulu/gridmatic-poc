@@ -33,7 +33,18 @@ export async function GET() {
       `,
     });
     
-    return NextResponse.json(rows);
+    // Transform BigQuery timestamp format to simple strings
+    const transformedRows = rows.map((row: any) => ({
+      timestamp_hour: row.timestamp_hour?.value || row.timestamp_hour,
+      price: row.price,
+      charge_mwh: row.charge_mwh,
+      discharge_mwh: row.discharge_mwh,
+      soc_mwh: row.soc_mwh,
+      bid_mwh: row.bid_mwh,
+      expected_profit: row.expected_profit
+    }));
+    
+    return NextResponse.json(transformedRows);
   } catch (error) {
     console.error("Error fetching optimizer data:", error);
     return NextResponse.json(

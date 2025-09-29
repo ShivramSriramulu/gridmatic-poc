@@ -35,7 +35,15 @@ export async function GET() {
       `,
     });
     
-    return NextResponse.json(rows);
+    // Transform BigQuery timestamp format to simple strings
+    const transformedRows = rows.map((row: any) => ({
+      timestamp_hour: row.timestamp_hour?.value || row.timestamp_hour,
+      yhat: row.yhat,
+      yhat_lower: row.yhat_lower,
+      yhat_upper: row.yhat_upper
+    }));
+    
+    return NextResponse.json(transformedRows);
   } catch (error) {
     console.error("Error fetching forecast data:", error);
     return NextResponse.json(
