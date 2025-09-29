@@ -83,7 +83,24 @@ export default function TradingChart() {
     );
   }
 
-  const labels = rows.map(r => new Date(r.timestamp_hour).toLocaleString());
+  const labels = rows.map(r => {
+    // Handle BigQuery timestamp format
+    const timestamp = r.timestamp_hour;
+    if (!timestamp) return "Invalid Date";
+    
+    // Try parsing as ISO string first
+    let date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      // If that fails, try adding 'Z' for UTC
+      date = new Date(timestamp + 'Z');
+    }
+    if (isNaN(date.getTime())) {
+      // If still fails, try parsing as BigQuery format
+      date = new Date(timestamp.replace(' ', 'T') + 'Z');
+    }
+    
+    return isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString();
+  });
   const yhat = rows.map(r => r.yhat);
   const ylow = rows.map(r => r.yhat_lower);
   const yhigh = rows.map(r => r.yhat_upper);
