@@ -1,7 +1,28 @@
 import { NextResponse } from "next/server";
 import { BigQuery } from "@google-cloud/bigquery";
 
-const client = new BigQuery({ projectId: process.env.GCP_PROJECT });
+function getBigQueryClient(): BigQuery {
+  const projectId = process.env.GCP_PROJECT;
+  const saJson = process.env.GCP_SA_KEY_JSON;
+
+  if (saJson && projectId) {
+    try {
+      const creds = JSON.parse(saJson);
+      // Some providers escape newlines in env vars; normalize
+      if (creds.private_key && typeof creds.private_key === "string") {
+        creds.private_key = creds.private_key.replace(/\\n/g, "\n");
+      }
+      return new BigQuery({ projectId, credentials: creds });
+    } catch (e) {
+      console.error("Failed to parse GCP_SA_KEY_JSON, falling back to default auth", e);
+    }
+  }
+
+  // Fallback to ADC (GOOGLE_APPLICATION_CREDENTIALS or runtime default)
+  return new BigQuery({ projectId });
+}
+
+const client = getBigQueryClient();
 
 export async function GET() {
   try {
