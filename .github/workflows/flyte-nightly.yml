@@ -1,0 +1,58 @@
+name: Nightly Pipeline
+on:
+  schedule:
+    - cron: "5 10 * * *"   # 10:05 UTC daily
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ---------- AUTH OPTION A: Workload Identity Federation (recommended) ----------
+      - name: Auth to GCP (WIF)
+        if: ${{ env.GCP_AUTH_METHOD == 'WIF' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      # ---------- AUTH OPTION B: SA JSON key (base64) ----------
+      - name: Write SA Key (JSON)
+        if: ${{ env.GCP_AUTH_METHOD == 'KEY' }}
+        run: |
+          echo '${{ secrets.GCP_SA_KEY_JSON }}' > $HOME/gcp-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json" >> $GITHUB_ENV
+
+      - name: Run Flyte workflow
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          BQ_DATASET: energy_ercot
+          EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
+          NOAA_STATION: 72243012960
+          GCP_AUTH_METHOD: WIF   # set to 'KEY' if using SA JSON
+        run: |
+          python -c "from pipeline.flyte.workflow import nightly; nightly()"

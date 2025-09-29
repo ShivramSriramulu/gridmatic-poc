@@ -1,0 +1,44 @@
+name: Flyte Register & Schedule
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  flyte-register:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install flytectl
+        run: |
+          curl -sL https://ctl.flyte.org/install | bash
+          sudo mv flytectl /usr/local/bin/
+          flytectl version
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install flytekit==1.11.0
+
+      - name: Configure Flyte
+        env:
+          FLYTE_ADMIN_ENDPOINT: ${{ secrets.FLYTE_ADMIN_ENDPOINT }}
+          FLYTE_CLIENT_ID: ${{ secrets.FLYTE_CLIENT_ID }}
+          FLYTE_AUTH_URL: ${{ secrets.FLYTE_AUTH_URL }}
+          FLYTE_TOKEN_URL: ${{ secrets.FLYTE_TOKEN_URL }}
+        run: |
+          echo "Admin endpoint: $FLYTE_ADMIN_ENDPOINT"
+
+      - name: Register workflows and activate schedule
+        env:
+          FLYTE_ADMIN_ENDPOINT: ${{ secrets.FLYTE_ADMIN_ENDPOINT }}
+        run: |
+          bash flyte/project/register.sh
