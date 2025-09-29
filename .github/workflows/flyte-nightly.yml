@@ -32,17 +32,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # ---------- AUTH OPTION A: Workload Identity Federation (recommended) ----------
-      - name: Auth to GCP (WIF)
-        if: ${{ env.GCP_AUTH_METHOD == 'WIF' }}
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-
-      # ---------- AUTH OPTION B: SA JSON key (base64) ----------
+      # ---------- AUTH: Service Account JSON key ----------
       - name: Write SA Key (JSON)
-        if: ${{ env.GCP_AUTH_METHOD == 'KEY' }}
         run: |
           echo '${{ secrets.GCP_SA_KEY_JSON }}' > $HOME/gcp-key.json
           echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcp-key.json" >> $GITHUB_ENV
@@ -53,6 +44,5 @@ jobs:
           BQ_DATASET: energy_ercot
           EIA_API_KEY: ${{ secrets.EIA_API_KEY }}
           NOAA_STATION: 72243012960
-          GCP_AUTH_METHOD: WIF   # set to 'KEY' if using SA JSON
         run: |
           python -c "from pipeline.flyte.workflow import nightly; nightly()"
